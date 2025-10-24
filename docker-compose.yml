@@ -1,0 +1,47 @@
+services:
+  qr_redirect_microservice_db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: qr_redirect_db
+    ports:
+      - "5435:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  qr_redis:
+    image: redis:latest
+    environment:
+      REDIS_PASSWORD: password
+    command: >
+      sh -c "redis-server --appendonly yes --requirepass \"${REDIS_PASSWORD}\""
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  redis_insight:
+    image: redis/redisinsight:latest
+    container_name: redis_insight
+    ports:
+      - "5540:5540"
+    environment:
+      - RI_REDIS_HOST=qr_redis
+      - RI_REDIS_PORT=6379
+      - RI_REDIS_PASSWORD=password
+    depends_on:
+      - qr_redis
+    restart: unless-stopped
+  qr_redirect_microservice:
+    build: .
+    ports:
+      - "8083:8080"
+    depends_on:
+      - qr_redirect_microservice_db
+      - qr_redis
+      - redis_insight
+
+volumes:
+  db-data:
+  redis-data:
